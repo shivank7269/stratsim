@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Business Simulation - Virtual Business Empire</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Game Panel Animations */
+        .setup-panel, .game-panel {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .setup-panel.active, .game-panel.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .btn-action {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .btn-action:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .btn-action:active {
+            transform: translateY(0);
+        }
+        .stat-change {
+            animation: statPulse 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        /* Resource Bars and Animations */
+        .resource-bar {
+            transition: width 0.3s ease-in-out;
+        }
+        .pulse-animation {
+            animation: pulse 2s infinite;
+        }
+        
+        /* Lightbox Styles */
+        .lightbox-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .lightbox-content {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            max-width: 600px;
+            width: 90%;
+            z-index: 1001;
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+        .lightbox-overlay.active, .lightbox-content.active {
+            opacity: 1;
+            display: block;
+        }
+        .rule-slide {
+            display: none;
+        }
+        .rule-slide.active {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+        .btn-next {
+            background: #4F46E5;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            margin-top: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .btn-next:hover {
+            background: #4338CA;
+            transform: translateY(-2px);
+        }
+        
+        /* Keyframe Animations */
+        @keyframes statPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease;
+        }
+        .animate-fade-out {
+            animation: fadeOut 0.3s ease;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-900 to-indigo-900 min-h-screen p-8">
+    <!-- Game Rules Lightbox -->
+    <div class="lightbox-overlay">
+        <div class="lightbox-content">
+            <div class="rule-slide active" data-slide="1">
+                <h2 class="text-2xl font-bold mb-4 text-blue-900">Welcome to Virtual Business Empire!</h2>
+                <p class="text-gray-700 mb-4">Get ready to build and manage your own business empire. Here's how to play:</p>
+                <button class="btn-next" data-next="2">Next Rule →</button>
+            </div>
+            <div class="rule-slide" data-slide="2">
+                <h2 class="text-2xl font-bold mb-4 text-blue-900">Managing Resources</h2>
+                <p class="text-gray-700 mb-4">• Start with $10,000 initial capital<br>• Hire employees to increase productivity<br>• Monitor your company's reputation</p>
+                <button class="btn-next" data-next="3">Next Rule →</button>
+            </div>
+            <div class="rule-slide" data-slide="3">
+                <h2 class="text-2xl font-bold mb-4 text-blue-900">Making Decisions</h2>
+                <p class="text-gray-700 mb-4">• Make strategic investments<br>• Balance resources and growth<br>• Complete achievements to level up</p>
+                <button class="btn-next" data-next="4">Next Rule →</button>
+            </div>
+            <div class="rule-slide" data-slide="4">
+                <h2 class="text-2xl font-bold mb-4 text-blue-900">Ready to Start!</h2>
+                <p class="text-gray-700 mb-4">Now you're ready to begin your journey as a business tycoon. Good luck!</p>
+                <button class="btn-next" id="start-game">Start Game!</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-6xl mx-auto">
+        <div class="bg-white/10 backdrop-blur-lg rounded-xl p-8 shadow-xl mb-8">
+            <h1 class="text-4xl font-bold text-white mb-8 text-center">Business Empire Simulator</h1>
+            <div class="flex justify-center space-x-4">
+                <div class="bg-white/80 px-6 py-3 rounded-lg shadow-lg">
+                    💰 <span id="money" class="font-semibold">$10,000</span>
+                </div>
+                <div class="bg-white/80 px-6 py-3 rounded-lg shadow-lg">
+                    ⭐ <span id="level" class="font-semibold">Level 1</span>
+                </div>
+                <div class="bg-white/80 px-6 py-3 rounded-lg shadow-lg">
+                    👥 <span id="employees" class="font-semibold">0 Employees</span>
+                </div>
+                <div class="bg-white/80 px-6 py-3 rounded-lg shadow-lg">
+                    🌟 <span id="reputation" class="font-semibold">50 Reputation</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Game Interface -->
+        <div class="setup-panel active text-center mb-8 bg-white/10 backdrop-blur-lg rounded-xl p-8 shadow-xl">
+            <h2 class="text-2xl font-bold text-white mb-6">Start Your Business Journey</h2>
+            <div class="max-w-md mx-auto">
+                <input type="text" id="companyName" placeholder="Enter Company Name" class="w-full px-6 py-3 rounded-lg bg-white/20 text-white placeholder-white/80 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <button id="startGame" class="w-full bg-white text-blue-900 px-8 py-3 rounded-lg font-semibold hover:bg-blue-100 transition-all btn-action shadow-lg">Start Business</button>
+            </div>
+        </div>
+
+        <div class="game-panel grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <!-- Business Stats -->
+            <div class="bg-white p-6 rounded-xl shadow-lg">
+                <h2 class="text-2xl font-bold mb-4"><span class="company-name">Your Company</span> Overview</h2>
+                <div class="space-y-4">
+                    <div>
+                        <div class="flex justify-between mb-1">
+                            <span>Company Value</span>
+                            <span id="companyValue">$10,000</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div class="resource-bar bg-green-500 h-2 rounded-full" style="width: 10%"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between mb-1">
+                            <span>Market Share</span>
+                            <span id="marketShare">5%</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div class="resource-bar bg-blue-500 h-2 rounded-full" style="width: 5%"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between mb-1">
+                            <span>Employee Satisfaction</span>
+                            <span id="employeeSatisfaction">75%</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div class="resource-bar bg-yellow-500 h-2 rounded-full" style="width: 75%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions Panel -->
+            <div class="bg-white p-6 rounded-xl shadow-lg">
+                <h2 class="text-2xl font-bold mb-4">Business Actions</h2>
+                <div class="grid grid-cols-2 gap-4">
+                    <button class="btn-expand bg-blue-600 text-white p-4 rounded-lg hover:bg-blue-700 transition btn-action">
+                        🏭 Expand Business ($5,000)
+                    </button>
+                    <button class="btn-hire bg-green-600 text-white p-4 rounded-lg hover:bg-green-700 transition btn-action">
+                        👥 Hire Staff ($1,000)
+                    </button>
+                    <button class="btn-research bg-purple-600 text-white p-4 rounded-lg hover:bg-purple-700 transition btn-action">
+                        📊 Research Market ($2,500)
+                    </button>
+                    <button class="btn-marketing bg-yellow-600 text-white p-4 rounded-lg hover:bg-yellow-700 transition btn-action">
+                        🎯 Marketing ($3,000)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Market Trends -->
+            <div class="bg-white p-6 rounded-xl shadow-lg">
+                <h2 class="text-2xl font-bold mb-4">Stock Market</h2>
+                <div class="mb-6">
+                    <canvas id="stockChart" class="w-full h-48"></canvas>
+                </div>
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100" onclick="showTradeModal('TECH')">
+                        <span>Technology (TECH)</span>
+                        <span id="techPrice" class="text-green-600">$150.25 ↗</span>
+                    </div>
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100" onclick="showTradeModal('REAL')">
+                        <span>Real Estate (REAL)</span>
+                        <span id="realPrice" class="text-red-600">$85.60 ↘</span>
+                    </div>
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100" onclick="showTradeModal('RETAIL')">
+                        <span>Retail (RETAIL)</span>
+                        <span id="retailPrice" class="text-green-600">$92.30 ↗</span>
+                    </div>
+                </div>
+            </div>
+            <!--Share Holding-->
+            <div class="bg-white p-6 rounded-xl shadow-lg">
+                <h2 class="text-2xl font-bold mb-4">Share Holdings</h2>
+                <div id="share-holdings" class="p-4 bg-orange-100 rounded-lg shadow-lg">
+                    <p class="text-gray-700">No shares purchased yet.</p>
+                </div>
+            </div>
+            <!-- Achievements -->
+            <div class="bg-white p-6 rounded-xl shadow-lg col-span-1 lg:col-span-2">
+                <h2 class="text-2xl font-bold mb-4">Achievements</h2>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="achievement bg-gray-100 p-4 rounded-lg text-center" data-achievement="first-hire">
+                        <div class="text-3xl mb-2">👥</div>
+                        <h3 class="font-semibold">First Hire</h3>
+                        <p class="text-sm text-gray-600">Hire your first employee</p>
+                        <div class="mt-2 h-1 bg-gray-300 rounded-full">
+                            <div class="h-1 bg-yellow-500 rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div class="achievement bg-gray-100 p-4 rounded-lg text-center" data-achievement="first-investment">
+                        <div class="text-3xl mb-2">💰</div>
+                        <h3 class="font-semibold">First Investment</h3>
+                        <p class="text-sm text-gray-600">Make your first stock purchase</p>
+                        <div class="mt-2 h-1 bg-gray-300 rounded-full">
+                            <div class="h-1 bg-yellow-500 rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div class="achievement bg-gray-100 p-4 rounded-lg text-center" data-achievement="level-up">
+                        <div class="text-3xl mb-2">⭐</div>
+                        <h3 class="font-semibold">Level Up</h3>
+                        <p class="text-sm text-gray-600">Reach level 2</p>
+                        <div class="mt-2 h-1 bg-gray-300 rounded-full">
+                            <div class="h-1 bg-yellow-500 rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div class="achievement bg-gray-100 p-4 rounded-lg text-center" data-achievement="market-leader">
+                        <div class="text-3xl mb-2">🏆</div>
+                        <h3 class="font-semibold">Market Leader</h3>
+                        <p class="text-sm text-gray-600">Achieve 50% market share</p>
+                        <div class="mt-2 h-1 bg-gray-300 rounded-full">
+                            <div class="h-1 bg-yellow-500 rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Trading Modal -->
+    <div id="tradeModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+        <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4">
+            <h3 class="text-2xl font-bold mb-4">Trade Stock</h3>
+            <div class="mb-4">
+                <div class="text-lg font-semibold" id="selectedStock"></div>
+                <div class="text-xl mb-2" id="stockPrice"></div>
+                <div class="flex space-x-4 mb-4">
+                    <button class="bg-blue-600 text-white px-4 py-2 rounded-lg" onclick="setTradeType('buy')">Buy</button>
+                    <button class="bg-red-600 text-white px-4 py-2 rounded-lg" onclick="setTradeType('sell')">Sell</button>
+                </div>
+                <input type="number" id="tradeAmount" class="w-full p-2 border rounded-lg mb-2" placeholder="Enter amount">
+                <div id="tradeCost" class="text-sm text-gray-600"></div>
+                <div id="tradeError" class="text-sm text-red-600 hidden"></div>
+            </div>
+            <div class="flex justify-end space-x-4">
+                <button class="px-4 py-2 bg-gray-200 rounded-lg" onclick="closeTradeModal()">Cancel</button>
+                <button class="px-4 py-2 bg-blue-600 text-white rounded-lg" onclick="executeTrade()">Confirm Trade</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="game_script.js"></script>
+</body>
+</html>
